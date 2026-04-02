@@ -17,7 +17,6 @@ package githubrepo
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"sync"
 
@@ -28,12 +27,13 @@ import (
 )
 
 type releasesHandler struct {
-	client   *github.Client
-	once     *sync.Once
-	ctx      context.Context
-	errSetup error
-	repourl  *Repo
-	releases []clients.Release
+	client              *github.Client
+	once                *sync.Once
+	ctx                 context.Context
+	errSetup            error
+	repourl             *Repo
+	releases            []clients.Release
+	ownerEndpointPrefix string
 }
 
 func (handler *releasesHandler) init(ctx context.Context, repourl *Repo) {
@@ -56,9 +56,26 @@ func (handler *releasesHandler) setup() error {
 			handler.errSetup = sce.WithMessage(sce.ErrScorecardInternal, fmt.Sprintf("githubv4.Query: %v", err))
 		}
 		handler.releases = releasesFrom(releases)
+		handler.ownerEndpointPrefix = handler.resolveOwnerEndpointPrefix()
 		handler.checkAttestations()
 	})
 	return handler.errSetup
+}
+
+// resolveOwnerEndpointPrefix determines whether the repo owner is a GitHub
+// user or organization and returns the corresponding API path prefix.
+// It calls the GitHub Users API once so that hasAttestation can use a single
+// endpoint per asset instead of trying both.
+func (handler *releasesHandler) resolveOwnerEndpointPrefix() string {
+	user, _, err := handler.client.Users.Get(handler.ctx, handler.repourl.owner)
+	if err != nil {
+		// Fall back to users; hasAttestation will skip on 404.
+		return "users"
+	}
+	if strings.EqualFold(user.GetType(), "Organization") {
+		return "orgs"
+	}
+	return "users"
 }
 
 // checkAttestations populates HasAttestation for each release asset that has a digest.
@@ -80,32 +97,19 @@ type attestationResponse struct {
 }
 
 // hasAttestation checks whether a GitHub artifact attestation exists for the given digest.
-// It tries the /users/{owner} endpoint first, then falls back to /orgs/{owner}.
+// It uses the pre-resolved ownerEndpointPrefix to call only the correct endpoint.
 func (handler *releasesHandler) hasAttestation(digest string) bool {
-	endpoints := []string{
-		fmt.Sprintf("users/%s/attestations/%s", handler.repourl.owner, digest),
-		fmt.Sprintf("orgs/%s/attestations/%s", handler.repourl.owner, digest),
+	endpoint := fmt.Sprintf("%s/%s/attestations/%s", handler.ownerEndpointPrefix, handler.repourl.owner, digest)
+	req, err := handler.client.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return false
 	}
-	for _, endpoint := range endpoints {
-		req, err := handler.client.NewRequest(http.MethodGet, endpoint, nil)
-		if err != nil {
-			continue
-		}
-		var body attestationResponse
-		resp, err := handler.client.Do(handler.ctx, req, &body)
-		if err != nil {
-			// A 404 means the owner doesn't match this endpoint type (user vs. org);
-			// try the next endpoint. Any other error stops the check.
-			if resp != nil && resp.StatusCode == http.StatusNotFound {
-				continue
-			}
-			return false
-		}
-		if len(body.Attestations) > 0 {
-			return true
-		}
+	var body attestationResponse
+	_, err = handler.client.Do(handler.ctx, req, &body)
+	if err != nil {
+		return false
 	}
-	return false
+	return len(body.Attestations) > 0
 }
 
 func (handler *releasesHandler) getReleases() ([]clients.Release, error) {

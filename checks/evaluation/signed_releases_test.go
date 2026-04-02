@@ -301,8 +301,8 @@ func TestSignedReleases(t *testing.T) {
 			},
 			result: scut.TestReturn{
 				Score:         10,
-				NumberOfInfo:  5,  // 1 attestation per release
-				NumberOfWarn:  5,  // provenance warnings still fire
+				NumberOfInfo:  5, // 1 attestation per release
+				NumberOfWarn:  5, // provenance warnings still fire
 				NumberOfDebug: 5,
 			},
 		},
