@@ -178,8 +178,8 @@ func TestResolveOwnerEndpointPrefix_User(t *testing.T) {
 		ctx:     t.Context(),
 		repourl: &Repo{owner: "testuser", repo: "repo"},
 	}
-	if got := handler.resolveOwnerEndpointPrefix(); got != "users" {
-		t.Errorf("expected %q, got %q", "users", got)
+	if got := handler.resolveOwnerEndpointPrefix(); got != ownerEndpointUser {
+		t.Errorf("expected %q, got %q", ownerEndpointUser, got)
 	}
 }
 
@@ -191,8 +191,8 @@ func TestResolveOwnerEndpointPrefix_Org(t *testing.T) {
 		ctx:     t.Context(),
 		repourl: &Repo{owner: "testorg", repo: "repo"},
 	}
-	if got := handler.resolveOwnerEndpointPrefix(); got != "orgs" {
-		t.Errorf("expected %q, got %q", "orgs", got)
+	if got := handler.resolveOwnerEndpointPrefix(); got != ownerEndpointOrg {
+		t.Errorf("expected %q, got %q", ownerEndpointOrg, got)
 	}
 }
 
@@ -203,9 +203,9 @@ func TestResolveOwnerEndpointPrefix_Error(t *testing.T) {
 		ctx:     t.Context(),
 		repourl: &Repo{owner: "anyowner", repo: "repo"},
 	}
-	// On error, should fall back to "users".
-	if got := handler.resolveOwnerEndpointPrefix(); got != "users" {
-		t.Errorf("expected fallback to %q, got %q", "users", got)
+	// On error, should fall back to ownerEndpointUser.
+	if got := handler.resolveOwnerEndpointPrefix(); got != ownerEndpointUser {
+		t.Errorf("expected fallback to %q, got %q", ownerEndpointUser, got)
 	}
 }
 
@@ -217,7 +217,7 @@ func TestHasAttestation_Found(t *testing.T) {
 		client:              github.NewClient(&http.Client{Transport: rt}),
 		ctx:                 t.Context(),
 		repourl:             &Repo{owner: "testuser", repo: "repo"},
-		ownerEndpointPrefix: "users",
+		ownerEndpointPrefix: ownerEndpointUser,
 	}
 	if !handler.hasAttestation(digest) {
 		t.Error("expected attestation to be found")
@@ -231,7 +231,7 @@ func TestHasAttestation_NotFound(t *testing.T) {
 		client:              github.NewClient(&http.Client{Transport: rt}),
 		ctx:                 t.Context(),
 		repourl:             &Repo{owner: "testuser", repo: "repo"},
-		ownerEndpointPrefix: "users",
+		ownerEndpointPrefix: ownerEndpointUser,
 	}
 	if handler.hasAttestation("sha256:notfound") {
 		t.Error("expected attestation not to be found")
@@ -244,7 +244,7 @@ func TestHasAttestation_RequestError(t *testing.T) {
 		client:              github.NewClient(&http.Client{Transport: &errorRoundTripper{}}),
 		ctx:                 t.Context(),
 		repourl:             &Repo{owner: "testuser", repo: "repo"},
-		ownerEndpointPrefix: "users",
+		ownerEndpointPrefix: ownerEndpointUser,
 	}
 	if handler.hasAttestation("sha256:any") {
 		t.Error("expected false on request error")
@@ -259,7 +259,7 @@ func TestCheckAttestations(t *testing.T) {
 		client:              github.NewClient(&http.Client{Transport: rt}),
 		ctx:                 t.Context(),
 		repourl:             &Repo{owner: "testuser", repo: "repo"},
-		ownerEndpointPrefix: "users",
+		ownerEndpointPrefix: ownerEndpointUser,
 		releases: []clients.Release{
 			{
 				TagName: "v1.0",

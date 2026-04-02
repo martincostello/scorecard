@@ -26,6 +26,11 @@ import (
 	sce "github.com/ossf/scorecard/v5/errors"
 )
 
+const (
+	ownerEndpointUser = "users"
+	ownerEndpointOrg  = "orgs"
+)
+
 type releasesHandler struct {
 	client              *github.Client
 	once                *sync.Once
@@ -70,12 +75,12 @@ func (handler *releasesHandler) resolveOwnerEndpointPrefix() string {
 	user, _, err := handler.client.Users.Get(handler.ctx, handler.repourl.owner)
 	if err != nil {
 		// Fall back to users; hasAttestation will skip on 404.
-		return "users"
+		return ownerEndpointUser
 	}
 	if strings.EqualFold(user.GetType(), "Organization") {
-		return "orgs"
+		return ownerEndpointOrg
 	}
-	return "users"
+	return ownerEndpointUser
 }
 
 // checkAttestations populates HasAttestation for each release asset that has a digest.
