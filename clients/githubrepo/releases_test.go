@@ -251,6 +251,21 @@ func TestHasAttestation_RequestError(t *testing.T) {
 	}
 }
 
+func TestHasAttestation_NewRequestError(t *testing.T) {
+	t.Parallel()
+	handler := &releasesHandler{
+		// github.NewClient(nil) is sufficient; NewRequest fails before any HTTP call is made.
+		client:              github.NewClient(nil),
+		ctx:                 t.Context(),
+		repourl:             &Repo{owner: "testuser", repo: "repo"},
+		ownerEndpointPrefix: ownerEndpointUser,
+	}
+	// A null byte in the digest makes the URL unparseable, causing NewRequest to return an error.
+	if handler.hasAttestation("sha256:abc\x00invalid") {
+		t.Error("expected false when NewRequest fails due to invalid URL")
+	}
+}
+
 func TestCheckAttestations(t *testing.T) {
 	t.Parallel()
 	const attestedDigest = "sha256:attested"
