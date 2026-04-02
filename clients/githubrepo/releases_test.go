@@ -29,10 +29,10 @@ import (
 
 // releasesRoundTripper is a mock RoundTripper for releases unit tests.
 type releasesRoundTripper struct {
-	// userType controls what /users/{owner} returns ("User" or "Organization").
-	userType string
 	// attestedDigests is the set of digests that should return attestations.
 	attestedDigests map[string]bool
+	// userType controls what /users/{owner} returns ("User" or "Organization").
+	userType string
 }
 
 func (r *releasesRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
