@@ -13,7 +13,7 @@
 # limitations under the License.
 
 id: releasesAreImmutable
-lifecycle: stable
+lifecycle: experimental
 short: Check that the project's GitHub releases are marked as immutable.
 motivation: >
   Immutable releases prevent release artifacts from being modified or deleted after publication,

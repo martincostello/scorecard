@@ -171,7 +171,7 @@ func TestSignedReleases(t *testing.T) {
 			result: scut.TestReturn{
 				Score:         6,
 				NumberOfInfo:  2,
-				NumberOfWarn:  4, // v0: provenance=False; v1: signed=False + immutable=False + provenance=False
+				NumberOfWarn:  4, // v0: provenance=False(1); v1: signed=False + immutable=False + provenance=False(3); v2: all suppressed by provenance
 				NumberOfDebug: 3,
 			},
 		},
@@ -202,7 +202,7 @@ func TestSignedReleases(t *testing.T) {
 			result: scut.TestReturn{
 				Score:         7,
 				NumberOfInfo:  4,
-				NumberOfWarn:  5, // v0: provenance=False; v1: provenance=False; v4: signed=False + immutable=False + provenance=False
+				NumberOfWarn:  5, // v0: provenance=False(1); v1: provenance=False(1); v2+v3: all suppressed by provenance; v4: signed=False + immutable=False + provenance=False(3)
 				NumberOfDebug: 5,
 			},
 		},
