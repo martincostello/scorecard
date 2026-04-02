@@ -171,7 +171,7 @@ func TestSignedReleases(t *testing.T) {
 			result: scut.TestReturn{
 				Score:         6,
 				NumberOfInfo:  2,
-				NumberOfWarn:  4, // v0: provenance=False(1); v1: signed=False + immutable=False + provenance=False(3); v2: all suppressed by provenance
+				NumberOfWarn:  4,
 				NumberOfDebug: 3,
 			},
 		},
@@ -202,7 +202,7 @@ func TestSignedReleases(t *testing.T) {
 			result: scut.TestReturn{
 				Score:         7,
 				NumberOfInfo:  4,
-				NumberOfWarn:  5, // v0: provenance=False(1); v1: provenance=False(1); v2+v3: all suppressed by provenance; v4: signed=False + immutable=False + provenance=False(3)
+				NumberOfWarn:  5,
 				NumberOfDebug: 5,
 			},
 		},
@@ -301,7 +301,7 @@ func TestSignedReleases(t *testing.T) {
 			result: scut.TestReturn{
 				Score:         checker.InconclusiveResultScore,
 				Error:         sce.ErrScorecardInternal,
-				NumberOfInfo:  12, // 2 (signed + provenance) for each release; immutable suppressed by provenance
+				NumberOfInfo:  12, // 2 (signed + provenance) for each release
 				NumberOfDebug: 6,  // 1 for each release
 			},
 		},
@@ -357,6 +357,18 @@ func Test_getReleaseName(t *testing.T) {
 						releasesAreSigned.AssetNameKey:   "artifact-1",
 					},
 					Probe: releasesAreSigned.Probe,
+				},
+			},
+			want: "v1",
+		},
+		{
+			name: "immutable release",
+			args: args{
+				f: &finding.Finding{
+					Values: map[string]string{
+						releasesAreImmutable.ReleaseNameKey: "v1",
+					},
+					Probe: releasesAreImmutable.Probe,
 				},
 			},
 			want: "v1",
