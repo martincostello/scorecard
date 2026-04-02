@@ -17,6 +17,7 @@ package githubrepo
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -55,8 +56,56 @@ func (handler *releasesHandler) setup() error {
 			handler.errSetup = sce.WithMessage(sce.ErrScorecardInternal, fmt.Sprintf("githubv4.Query: %v", err))
 		}
 		handler.releases = releasesFrom(releases)
+		handler.checkAttestations()
 	})
 	return handler.errSetup
+}
+
+// checkAttestations populates HasAttestation for each release asset that has a digest.
+func (handler *releasesHandler) checkAttestations() {
+	for i := range handler.releases {
+		for j := range handler.releases[i].Assets {
+			asset := &handler.releases[i].Assets[j]
+			if asset.Digest == "" {
+				continue
+			}
+			asset.HasAttestation = handler.hasAttestation(asset.Digest)
+		}
+	}
+}
+
+// attestationResponse is the JSON response from the GitHub attestations API.
+type attestationResponse struct {
+	Attestations []interface{} `json:"attestations"`
+}
+
+// hasAttestation checks whether a GitHub artifact attestation exists for the given digest.
+// It tries the /users/{owner} endpoint first, then falls back to /orgs/{owner}.
+func (handler *releasesHandler) hasAttestation(digest string) bool {
+	endpoints := []string{
+		fmt.Sprintf("users/%s/attestations/%s", handler.repourl.owner, digest),
+		fmt.Sprintf("orgs/%s/attestations/%s", handler.repourl.owner, digest),
+	}
+	for _, endpoint := range endpoints {
+		req, err := handler.client.NewRequest(http.MethodGet, endpoint, nil)
+		if err != nil {
+			continue
+		}
+		var body attestationResponse
+		resp, err := handler.client.Do(handler.ctx, req, &body)
+		if err != nil {
+			// A 404 means the owner doesn't match this endpoint type (user vs. org);
+			// try the next endpoint. Any other error stops the check.
+			if resp != nil && resp.StatusCode == http.StatusNotFound {
+				continue
+			}
+			return false
+		}
+		if len(body.Attestations) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func (handler *releasesHandler) getReleases() ([]clients.Release, error) {
@@ -76,8 +125,9 @@ func releasesFrom(data []*github.RepositoryRelease) []clients.Release {
 		}
 		for _, a := range r.Assets {
 			release.Assets = append(release.Assets, clients.ReleaseAsset{
-				Name: a.GetName(),
-				URL:  r.GetHTMLURL(),
+				Name:   a.GetName(),
+				URL:    r.GetHTMLURL(),
+				Digest: a.GetDigest(),
 			})
 		}
 		releases = append(releases, release)
